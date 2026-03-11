@@ -24,4 +24,4 @@ jobs:
         run: python trading_bot.py
         env:
           # Inserisci qui le tue chiavi se non vuoi caricarle nel codice pubblico
-          API_KEY: ${{ secrets.API_KEY }}
+          API_KEY: ${{ secrets.FIX9HNM1D5XAI9Y0}}
