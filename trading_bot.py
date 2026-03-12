@@ -3,9 +3,11 @@ import pandas as pd
 import time
 
 # ─── CONFIGURAZIONE ──────────────────────────────────────────────────────────
-API_KEY     = "FIX9HNM1D5XAI9Y0"
-TELEGRAM_TOKEN = "8753761075:AAEZHhEScWDBVwXSc1jTqOqfX9f6IMAflXc"  # Incolla qui il token di BotFather
-CHAT_ID        = "817439734"     # Incolla qui il tuo Chat ID
+import os
+API_KEY = os.getenv("ALPHA_VANTAGE_KEY")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+
 TITOLI         = ["TSLA", "AAPL", "NVDA", "BTCUSD"]
 # ──────────────────────────────────────────────────────────────────────────────
 
