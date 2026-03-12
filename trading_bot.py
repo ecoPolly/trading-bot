@@ -12,10 +12,10 @@ CHAT_ID = os.getenv("CHAT_ID")
 TITOLI = {
     "NVDA": 30, "VRT": 35, "ASML": 30,            # AI & Tech
     "LMT": 40, "RTX": 40, "PLTR": 35, "GD": 38,   # Difesa & Guerra
-    "CCJ": 40, "SMR": 35, "SRUUF": 40,            # Uranio & Nucleare
-    "FCX": 40, "ALB": 35,                         # Metalli
+    "CCJ": 40, "SMR": 35,                         # Uranio & Nucleare
+    "FCX": 40, "LAC": 35,                         # Metalli (LAC è alternativa a ALB)
     "TSLA": 30, "BTC": 30,                        # Volatili
-    "QQQ": 30, "SPY": 30                          # Indici
+    "XLK": 30, "VOO": 30,                           # Indici Tech e S&P500 (Alternative a QQQ/SPY)
 }
 
 # ─── FUNZIONI DI SUPPORTO ────────────────────────────────────────────────────
