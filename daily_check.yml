@@ -1,27 +1,29 @@
-name: Trading Bot Daily Check
+name: Trading Bot Automation
 
 on:
   schedule:
-    - cron: '15 21 * * *' # Gira ogni giorno alle 21:15 UTC (22:15 in Italia)
-  workflow_dispatch: # Ti permette di lanciarlo a mano se vuoi fare un test
+    # Gira ogni sera alle 21:15 UTC (22:15 italiane)
+    - cron: '15 21 * * *'
+  workflow_dispatch: # Questo ti permette di testarlo subito premendo un tasto
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Scarica il codice
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Configura Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install dependencies
+      - name: Installa librerie
         run: pip install requests pandas
 
-      - name: Run Bot
-        run: python trading_bot.py
+      - name: Esegui lo script
         env:
-          # Inserisci qui le tue chiavi se non vuoi caricarle nel codice pubblico
-          API_KEY: ${{ secrets.FIX9HNM1D5XAI9Y0}}
+          ALPHA_VANTAGE_KEY: ${{ secrets.ALPHA_VANTAGE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python trading_bot.py
