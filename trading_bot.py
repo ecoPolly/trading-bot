@@ -9,16 +9,21 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 # Watchlist Strategica con soglie RSI personalizzate
+# Watchlist Strategica Ampliata (Target: ~3 segnali/settimana)
 TITOLI = {
-    "NVDA": 30, "VRT": 35, "ASML": 30,            # AI & Tech
-    "LMT": 40, "RTX": 40, "PLTR": 35, "GD": 38,   # Difesa & Guerra
-    "CCJ": 40, "SMR": 35,                         # Uranio & Nucleare
-    "FCX": 40, "LAC": 35,                         # Metalli (LAC è alternativa a ALB)
-    "TSLA": 30, "BTC": 30,                        # Volatili
-    "XLK": 30, "VOO": 30,                           # Indici Tech e S&P500 (Alternative a QQQ/SPY)
+    # --- AI, TECH & SEMICONDUCTORS ---
+    "NVDA": 30, "VRT": 35, "ASML": 30, "AMD": 30, "AVGO": 35,
+    # --- DIFESA, GUERRA & CYBERSECURITY ---
+    "LMT": 40, "RTX": 40, "GD": 38, "PANW": 35,
+    # --- ENERGIA, URANIO & NUCLEARE ---
+    "CCJ": 40, "SMR": 35, "VST": 40, "OKLO": 30,
+    # --- METALLI & MATERIE PRIME ---
+    "FCX": 40, "LAC": 35, "MP": 35,
+    # --- BIG PHARMA & BIOTECH (Trend Obesità/Longevità) ---
+    "LLY": 35, "NVO": 35,
+    # --- INDICI & CLOUD ---
+    "XLK": 30, "VOO": 30, "AMZN": 35, "MSFT": 35
 }
-
-# ─── FUNZIONI DI SUPPORTO ────────────────────────────────────────────────────
 
 def send_telegram_msg(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -113,17 +118,19 @@ def get_data_and_analyze(symbol, rsi_threshold):
 # ─── ESECUZIONE ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("🤖 Bot in esecuzione... Analisi della watchlist in corso.")
+    print("🤖 Bot in esecuzione...")
+    report_completo = "📊 REPORT GIORNALIERO\n"
+    segnali_trovati = 0
     
     for s, soglia in TITOLI.items():
         print(f"Controllo {s}...")
-        segnali = get_data_and_analyze(s, soglia)
-        
-        if segnali:
-            send_telegram_msg(segnali)
-            print(f"✅ Messaggio inviato per {s}")
-        
-        # Attesa per rispettare le 5 chiamate/minuto della versione Free
+        res = get_data_and_analyze(s, soglia)
+        if res:
+            send_telegram_msg(res)
+            segnali_trovati += 1
         time.sleep(15)
-        
-    print(" Analisi completata.")
+    
+    if segnali_trovati == 0:
+        send_telegram_msg("✅ Analisi completata: Nessun segnale di acquisto oggi. Mercato stabile.")
+    
+    print("Analisi completata.")
