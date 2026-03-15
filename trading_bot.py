@@ -25,65 +25,47 @@ API_KEY        = os.getenv("ALPHA_VANTAGE_KEY", "demo")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID        = os.getenv("CHAT_ID")
 
-# Alpha Vantage free: ~25 call/giorno (ogni titolo usa 2 call: DAILY + OVERVIEW)
-# Con 22 titoli = 44 call → esegui ogni 2 giorni oppure riduci la watchlist
-# Imposta SLEEP_BETWEEN_CALLS >= 15 sec per stare nei limiti
-
-SLEEP_BETWEEN_CALLS = 15   # secondi tra chiamate API
-SLEEP_AFTER_FUND    = 15   # secondi extra dopo chiamata fondamentali
-
-# ─── WATCHLIST ───────────────────────────────────────────────────────────────
-# Formato: "TICKER": (soglia_RSI, orizzonte)
-# orizzonte: "S" = breve (1-3 mesi), "M" = medio (3-9 mesi), "L" = lungo (9m+)
-# Soglie RSI più basse = più selettivo (meno segnali, più qualità)
+# Alpha Vantage free: 25 call/giorno
+# Budget per run: 1 (VIX) + N titoli tecnici + M fondamentali (solo se passano pre-filtro)
+# Con 12 titoli, caso peggiore = 1 + 12 + 12 = 25 call esatte → girabile ogni giorno
+# Nella pratica 5-8 titoli passano il pre-filtro → ~20 call → margin of safety ok
 
 TITOLI = {
-    # ── BREVE TERMINE: titoli già corretti, catalizzatori vicini ──────────────
-    # NVO ha perso ~40% dai massimi 2024, trend obesità intatto
+    # ── BREVE TERMINE (S): già corretti, catalizzatore nei prossimi 1-3 mesi ──
+    # NVO: -40% dai massimi, trial GLP-1 next-gen in arrivo
     "NVO":  (38, "S"),
-    # LLY correzione post-massimi, pipeline forte
-    "LLY":  (38, "S"),
-    # PANW ha consolidato, il ciclo rinnovi contratti è imminente
-    "PANW": (35, "S"),
-    # RTX beneficia escalation difesa EU, P/E ragionevole
+    # RTX: P/E ragionevole, budget difesa EU in forte crescita
     "RTX":  (40, "S"),
-    # FCX legato al rame: infrastrutture AI e green energy lo spingono
+    # FCX: rame essenziale per AI datacenter e green energy, valutazione a sconto
     "FCX":  (38, "S"),
 
-    # ── MEDIO TERMINE: trend forti ma volatili, aspetta lo sconto ─────────────
-    # AVGO: chip custom per Google/Meta/Apple, meno esposta dazi di NVDA
+    # ── MEDIO TERMINE (M): trend strutturali, aspetta lo sconto giusto ─────────
+    # AVGO: chip custom per Google/Meta/Apple, meno esposta ai dazi di NVDA
     "AVGO": (35, "M"),
-    # MSFT: AI + cloud enterprise, la più difensiva del big tech
+    # MSFT: AI + Azure + enterprise, la più difensiva del big tech
     "MSFT": (33, "M"),
-    # CCJ: uranio — accordi nucleare Microsoft/Google danno visibilità pluriennale
+    # CCJ: uranio — accordi nucleare con hyperscaler danno visibilità pluriennale
     "CCJ":  (38, "M"),
-    # GD: backlog record, budget difesa in aumento globale
+    # GD: backlog ordini record, contratti governativi pluriennali
     "GD":   (38, "M"),
-    # VST: vende elettricità ai datacenter, contratti pluriennali siglati
-    "VST":  (35, "M"),
-    # MP: terre rare strategiche, unico produttore USA rilevante
-    "MP":   (33, "M"),
-    # AMZN: AWS + AI + logistica, correzioni sono opportunità
+    # AMZN: AWS + AI + logistica, ogni correzione è un'opportunità
     "AMZN": (35, "M"),
 
-    # ── LUNGO TERMINE: speculativi/tematici, accumula sulle correzioni ─────────
-    # NVDA: ogni correzione è storicamente un'opportunità di accumulo
+    # ── LUNGO TERMINE (L): eccellenti ma volatili, accumula piano ─────────────
+    # NVDA: ogni correzione > 20% è storicamente un'opportunità di accumulo
     "NVDA": (30, "L"),
-    # ASML: monopolio litografia EUV, l'unica alternativa non esiste
-    "ASML": (30, "L"),
-    # LMT: contratti decennali, dividend aristocrat della difesa
+    # LMT: dividend aristocrat, contratti decennali, cresce in qualsiasi scenario geopolitico
     "LMT":  (40, "L"),
-    # XLK: ETF tech USA, meno volatile delle singole
-    "XLK":  (30, "L"),
-    # VOO: S&P500, il mattone di qualsiasi portafoglio
+    # VOO: S&P500 ETF, il mattone di qualsiasi portafoglio — bassa soglia RSI = solo in crolli
     "VOO":  (30, "L"),
-    # SMR: small modular reactor — speculativo ma catalizzatore nucleare reale
-    "SMR":  (30, "L"),
-    # VRT: infrastruttura datacenter (cooling), backlog record
-    "VRT":  (33, "L"),
+    # VST: vende elettricità ai datacenter AI, contratti pluriennali già siglati
+    "VST":  (35, "L"),
 }
 
 # ─── PARAMETRI TECNICI ───────────────────────────────────────────────────────
+
+SLEEP_BETWEEN_CALLS = 15   # secondi tra chiamate API (non scendere sotto 12)
+SLEEP_AFTER_FUND    = 15   # secondi extra dopo chiamata fondamentali
 
 VIX_SOGLIA_ALERT  = 25   # sopra questa soglia: aggiungi warning al messaggio
 VIX_SOGLIA_BLOCCO = 35   # sopra questa soglia: blocca tutti i segnali BUY
@@ -250,18 +232,20 @@ def calcola_score(row: pd.Series, rsi_threshold: float, fund: dict) -> tuple[int
         score += 1
         motivi.append(f"Prezzo sotto Bollinger inferiore (${row['BB_low']:.2f})")
 
-    # 2. MACD: istogramma negativo ma in risalita (divergenza rialzista)
-    if row["MACD_hist"] < 0 and row["MACD_hist"] > 0:
-        # caso impossibile, usato come placeholder — sotto la logica reale
-        pass
-    # MACD sopra signal line = momentum positivo in formazione
+    # 2. MACD: tre casi in ordine di forza decrescente
+    #    a) Crossover già avvenuto: MACD sopra Signal  → segnale forte
+    #    b) Istogramma negativo ma in SALITA rispetto al giorno prima
+    #       (divergenza rialzista: il ribasso sta perdendo forza)  → segnale moderato
+    #    c) Nessuna delle due → nessun punto
+    macd_hist_prev = row.get("MACD_hist_prev", None)  # iniettato da analizza()
     if row["MACD"] > row["Signal"]:
         score += 1
-        motivi.append("MACD sopra signal line (momentum positivo)")
-    elif row["MACD_hist"] > -0.5 and row["RSI"] < rsi_threshold + 5:
-        # MACD quasi al crossover
+        motivi.append(f"MACD crossover rialzista (MACD {row['MACD']:.3f} > Signal {row['Signal']:.3f})")
+    elif macd_hist_prev is not None and row["MACD_hist"] > macd_hist_prev and row["MACD_hist"] < 0:
         score += 1
-        motivi.append("MACD prossimo al crossover rialzista")
+        motivi.append(f"MACD hist in risalita ({macd_hist_prev:.3f} → {row['MACD_hist']:.3f}) — divergenza rialzista")
+    else:
+        motivi.append(f"MACD neutro/ribassista (hist {row['MACD_hist']:.3f})")
 
     # 3. Prezzo sopra MA200 (trend lungo termine rialzista)
     if pd.notna(row["MA200"]) and row["Close"] > row["MA200"]:
@@ -335,7 +319,12 @@ def analizza(symbol: str, rsi_threshold: float, orizzonte: str, vix: float) -> s
     if df is None or len(df) < 200:
         return None
 
-    row = df.iloc[-1]
+    row = df.iloc[-1].copy()
+    # Inietta l'istogramma MACD del giorno precedente per rilevare divergenze rialziste
+    if len(df) >= 2:
+        row["MACD_hist_prev"] = df["MACD_hist"].iloc[-2]
+    else:
+        row["MACD_hist_prev"] = None
 
     # Pre-filtro rapido: se RSI alto e prezzo sopra Bollinger, skip senza usare altra call API
     if row["RSI"] > rsi_threshold + 15 and row["Close"] > row["BB_low"] * 1.05:
