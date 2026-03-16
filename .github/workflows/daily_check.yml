@@ -4,19 +4,19 @@ on:
   schedule:
     # Gira ogni sera alle 21:15 UTC (22:15 italiane)
     - cron: '15 21 * * *'
-  workflow_dispatch: # Questo ti permette di testarlo subito premendo un tasto
+  workflow_dispatch: 
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
       - name: Scarica il codice
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Aggiornato a v4
 
       - name: Configura Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Aggiornato a v5
         with:
-          python-version: '3.9'
+          python-version: '3.11' # Versione più recente e stabile
 
       - name: Installa librerie
         run: pip install requests pandas
